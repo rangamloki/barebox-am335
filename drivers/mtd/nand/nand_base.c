@@ -373,17 +373,20 @@ static void nand_command(struct mtd_info *mtd, unsigned int command,
 	}
 	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
 
-	/*
-	 * program and erase have their own busy handlers
-	 * status and sequential in needs no delay
-	 */
+	/* Some commands need no delay */
 	switch (command) {
 
-	case NAND_CMD_PAGEPROG:
 	case NAND_CMD_ERASE1:
-	case NAND_CMD_ERASE2:
+		return;
+
 	case NAND_CMD_SEQIN:
+		/* need to wait tADL, but ready line not used */
+		ndelay(70);
+		return;
+
 	case NAND_CMD_STATUS:
+		/* need to wait tWHR, but ready line not used */
+		ndelay(80);
 		return;
 
 	case NAND_CMD_RESET:
@@ -405,7 +408,7 @@ static void nand_command(struct mtd_info *mtd, unsigned int command,
 		 */
 		if (!chip->dev_ready) {
 			udelay(chip->chip_delay);
-			return;
+			goto afterready;
 		}
 	}
 	/* Apply this short delay always to ensure that we do wait tWB in
@@ -413,6 +416,11 @@ static void nand_command(struct mtd_info *mtd, unsigned int command,
 	ndelay(100);
 
 	nand_wait_ready(mtd);
+
+afterready:
+	if (command == NAND_CMD_READ0)
+		/* need to wait tRR after chip ready */
+		ndelay(20);
 }
 
 /**
@@ -465,20 +473,23 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 	}
 	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
 
-	/*
-	 * program and erase have their own busy handlers
-	 * status, sequential in, and deplete1 need no delay
-	 */
 	switch (command) {
 
+	/* Some commands need no delay */
 	case NAND_CMD_CACHEDPROG:
-	case NAND_CMD_PAGEPROG:
 	case NAND_CMD_ERASE1:
-	case NAND_CMD_ERASE2:
-	case NAND_CMD_SEQIN:
 	case NAND_CMD_RNDIN:
-	case NAND_CMD_STATUS:
 	case NAND_CMD_DEPLETE1:
+		return;
+
+	case NAND_CMD_SEQIN:
+		/* need to wait tADL, but ready line not used */
+		ndelay(70);
+		return;
+
+	case NAND_CMD_STATUS:
+		/* need to wait tWRH, but ready line not used */
+		ndelay(80);
 		return;
 
 		/*
@@ -509,6 +520,8 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE,
 			       NAND_NCE | NAND_CTRL_CHANGE);
+		/* tWHR */
+		ndelay(80);
 		return;
 
 	case NAND_CMD_READ0:
@@ -525,7 +538,7 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 		 */
 		if (!chip->dev_ready) {
 			udelay(chip->chip_delay);
-			return;
+			goto afterready;
 		}
 	}
 
@@ -534,6 +547,11 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 	ndelay(100);
 
 	nand_wait_ready(mtd);
+
+afterready:
+	if (command == NAND_CMD_READ0)
+		/* need to wait tRR after chip ready */
+		ndelay(20);
 }
 
 /**
