@@ -159,6 +159,9 @@ int gpmc_prefetch_enable(int cs, int fifo_th, int dma_mode,
 		return -EINVAL;
 	}
 
+	if (readl(GPMC_REG(PREFETCH_CONTROL)))
+		return -EBUSY;
+
 	/* Set the amount of bytes to be prefetched */
 	writel(u32_count, GPMC_REG(PREFETCH_CONFIG2));
 
