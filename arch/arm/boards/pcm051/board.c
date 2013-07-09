@@ -120,6 +120,7 @@ static struct gpmc_nand_platform_data nand_plat = {
 	.wait_mon_pin = 1,
 	.ecc_mode = OMAP_ECC_BCH8_CODE_HW,
 	.nand_cfg = &pcm051_nand_cfg,
+	.is_elm_used = 1,
 };
 
 static struct omap_barebox_part pcm051_barebox_part = {
@@ -165,6 +166,9 @@ static void pcm051_nand_init(void)
 	pcm051_enable_nand_pin_mux();
 
 	gpmc_generic_init(0x12);
+
+	add_generic_device("elm", 0, NULL, 0x48080000, SZ_64K,
+						IORESOURCE_MEM, NULL);
 
 	omap_add_gpmc_nand_device(&nand_plat);
 }
