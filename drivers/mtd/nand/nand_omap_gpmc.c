@@ -64,6 +64,7 @@
 #include <driver.h>
 #include <malloc.h>
 #include <clock.h>
+#include <linux/mtd/elm.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
@@ -84,6 +85,10 @@
 
 #define GPMC_ECC_SIZE_CONFIG_ECCSIZE0(x)	((x) << 12)
 #define GPMC_ECC_SIZE_CONFIG_ECCSIZE1(x)	((x) << 22)
+
+#define SECTOR_BYTES		(512)
+#define BCH8_ECC_MAX		((SECTOR_BYTES + BCH8_ECC_OOB_BYTES) * 8)
+#define BCH4_ECC_MAX		((SECTOR_BYTES + BCH4_ECC_OOB_BYTES) * 8)
 
 int omap_gpmc_decode_bch(int select_4_8, unsigned char *ecc, unsigned int *err_loc);
 
@@ -112,6 +117,8 @@ struct gpmc_nand_info {
 	unsigned char ecc_parity_pairs;
 	enum gpmc_ecc_mode ecc_mode;
 	void *cs_base;
+	int is_elm_used;
+	struct device_d *elm_dev;
 };
 
 /* Typical BOOTROM oob layouts-requires hwecc **/
@@ -344,15 +351,18 @@ static int omap_correct_bch(struct mtd_info *mtd, uint8_t *dat,
 	struct gpmc_nand_info *oinfo = (struct gpmc_nand_info *)(nand->priv);
 	int i, j, eccsize, eccflag, count, totalcount;
 	unsigned int err_loc[8];
+	int error_max;
 	int blocks = 0;
 	int select_4_8;
 
 	if (oinfo->ecc_mode == OMAP_ECC_BCH4_CODE_HW) {
 		eccsize = 7;
 		select_4_8 = 0;
+		error_max = BCH4_ECC_MAX;
 	} else {
 		eccsize = 13;
 		select_4_8 = 1;
+		error_max = BCH8_ECC_MAX;
 	}
 
 	if (nand->ecc.size  == 2048)
@@ -380,18 +390,45 @@ static int omap_correct_bch(struct mtd_info *mtd, uint8_t *dat,
 
 		count = 0;
 		if (eccflag == 1) {
-			count = omap_gpmc_decode_bch(select_4_8, calc_ecc, err_loc);
+			if (oinfo->is_elm_used)
+				count = elm_decode_bch_error(oinfo->elm_dev,
+							calc_ecc, err_loc);
+			else
+				count = omap_gpmc_decode_bch(select_4_8,
+							calc_ecc, err_loc);
+
 			if (count < 0)
 				return count;
 			else
 				totalcount += count;
 		}
 
-		for (j = 0; j < count; j++) {
-			if (err_loc[j] < 4096)
-				dat[err_loc[j] >> 3] ^=
-						1 << (err_loc[j] & 7);
-			/* else, not interested to correct ecc */
+		if (oinfo->is_elm_used) {
+			for (j = 0; j < count; j++) {
+				u32 bit_pos, byte_pos;
+				bit_pos   = err_loc[j] % 8;
+				byte_pos  = (error_max - err_loc[j] - 1) / 8;
+				if (err_loc[j] < error_max) {
+					/*
+					 * Check bit flip error reported in data
+					 * area, if yes correct bit flip, else
+					 * bit flip in OOB area.
+					 */
+					if (byte_pos < 512)
+						dat[byte_pos] ^= 1 << bit_pos;
+					else
+						read_ecc[byte_pos - 512] ^=
+								1 << bit_pos;
+				}
+				/* else, not interested to correct ecc */
+			}
+		} else {
+			for (j = 0; j < count; j++) {
+				if (err_loc[j] < 4096)
+					dat[err_loc[j] >> 3] ^=
+							1 << (err_loc[j] & 7);
+				/* else, not interested to correct ecc */
+			}
 		}
 
 		calc_ecc = calc_ecc + eccsize;
@@ -808,6 +845,8 @@ static int omap_gpmc_eccmode(struct gpmc_nand_info *oinfo,
 		offset = minfo->oobsize - oinfo->nand.ecc.bytes;
 		for (i = 0; i < oinfo->nand.ecc.bytes; i++)
 			omap_oobinfo.eccpos[i] = i + offset;
+		if (oinfo->is_elm_used)
+			oinfo->elm_dev = elm_request(BCH4_ECC);
 		break;
 	case OMAP_ECC_BCH8_CODE_HW:
 		oinfo->nand.ecc.bytes    = 4 * 13;
@@ -818,6 +857,8 @@ static int omap_gpmc_eccmode(struct gpmc_nand_info *oinfo,
 		offset = minfo->oobsize - oinfo->nand.ecc.bytes;
 		for (i = 0; i < oinfo->nand.ecc.bytes; i++)
 			omap_oobinfo.eccpos[i] = i + offset;
+		if (oinfo->is_elm_used)
+			oinfo->elm_dev = elm_request(BCH8_ECC);
 		break;
 	case OMAP_ECC_BCH8_CODE_HW_ROMCODE:
 		oinfo->nand.ecc.bytes    = 4 * 13;
@@ -944,6 +985,7 @@ static int gpmc_nand_probe(struct device_d *pdev)
 	oinfo->gpmc_address = (void *)(cs_base + GPMC_CS_NAND_ADDRESS);
 	oinfo->gpmc_data = (void *)(cs_base + GPMC_CS_NAND_DATA);
 	oinfo->cs_base = (void *)pdata->nand_cfg->base;
+	oinfo->is_elm_used = pdata->is_elm_used;
 	dev_dbg(pdev, "GPMC base=0x%p cmd=0x%p address=0x%p data=0x%p cs_base=0x%p\n",
 		oinfo->gpmc_base, oinfo->gpmc_command, oinfo->gpmc_address,
 		oinfo->gpmc_data, cs_base);

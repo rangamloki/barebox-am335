@@ -43,6 +43,7 @@ struct gpmc_nand_platform_data {
 	int cs;
 	struct mtd_partition *parts;
 	int nr_parts;
+	int is_elm_used;
 	/** If there are any special setups you'd want to do */
 	int (*nand_setup) (struct gpmc_nand_platform_data *);
 
