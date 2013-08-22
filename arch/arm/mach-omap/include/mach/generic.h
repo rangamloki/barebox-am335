@@ -50,6 +50,6 @@ static inline int omap_set_barebox_part(struct omap_barebox_part *part)
 #endif
 
 extern uint32_t omap_bootinfo[3];
-void omap_save_bootinfo(void);
+void omap_save_bootinfo(void *data);
 
 #endif
