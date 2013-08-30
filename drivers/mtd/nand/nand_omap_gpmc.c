@@ -896,6 +896,7 @@ static int omap_gpmc_eccmode(struct gpmc_nand_info *oinfo,
 		offset = 1;
 
 	if (mode != OMAP_ECC_SOFT) {
+		nand->options |= NAND_NO_SUBPAGE_WRITE;
 		nand->ecc.layout = &omap_oobinfo;
 		nand->ecc.calculate = omap_calculate_ecc;
 		nand->ecc.hwctl = omap_enable_hwecc;
