@@ -234,6 +234,17 @@ if MACH_PCM049
 	endchoice
 endif
 
+if MACH_PCM051
+	choice
+	prompt "Select DDR3 RAM"
+
+	config 512MB_MT41J128M16_1x512M16
+		bool "512MB MT41J128M16 (1x512M16)"
+	config 512MB_MT41J256M8HX15E_2x256M8
+		bool "512MB MT41J256M8HX15E (2x256M8)"
+	endchoice
+endif
+
 config MACH_OMAP_ADVANCED_MUX
 	bool "Enable advanced pin muxing"
 	depends on MACH_OMAP343xSDP
