@@ -62,6 +62,60 @@ static const struct am33xx_ddr_data MT41J256M8HX15E_2x256M8_data = {
 	.wr_slave_ratio0	= 0xC1,
 };
 
+/* 1x128M16 */
+static const struct am33xx_emif_regs MT41J64M1615IT_1x128M16_regs = {
+	.emif_read_latency	= 0x6,
+	.emif_tim1		= 0x0888A39B,
+	.emif_tim2		= 0x26247FDA,
+	.emif_tim3		= 0x501F821F,
+	.sdram_config		= 0x61C04A32,
+	.zq_config		= 0x50074BE4,
+	.sdram_ref_ctrl		= 0x0000093B,
+};
+
+static const struct am33xx_ddr_data MT41J64M1615IT_1x128M16_data = {
+	.rd_slave_ratio0	= 0x3A,
+	.wr_dqs_slave_ratio0	= 0x36,
+	.fifo_we_slave_ratio0	= 0xA2,
+	.wr_slave_ratio0	= 0x74,
+};
+
+/* 1x256M16 */
+static const struct am33xx_emif_regs MT41J128M16125IT_1x256M16_regs = {
+	.emif_read_latency	= 0x6,
+	.emif_tim1		= 0x0888A39B,
+	.emif_tim2		= 0x26337FDA,
+	.emif_tim3		= 0x501F830F,
+	.sdram_config		= 0x61C04AB2,
+	.zq_config		= 0x50074BE4,
+	.sdram_ref_ctrl		= 0x0000093B,
+};
+
+static const struct am33xx_ddr_data MT41J128M16125IT_1x256M16_data = {
+	.rd_slave_ratio0	= 0x3B,
+	.wr_dqs_slave_ratio0	= 0x3B,
+	.fifo_we_slave_ratio0	= 0x97,
+	.wr_slave_ratio0	= 0x76,
+};
+
+/* 2x512M8 */
+static const struct am33xx_emif_regs MT41J512M8125IT_2x512M8_regs = {
+	.emif_read_latency	= 0x6,
+	.emif_tim1		= 0x0888A39B,
+	.emif_tim2		= 0x26517FDA,
+	.emif_tim3		= 0x501F84EF,
+	.sdram_config		= 0x61C04B32,
+	.zq_config		= 0x50074BE4,
+	.sdram_ref_ctrl		= 0x0000093B,
+};
+
+static const struct am33xx_ddr_data MT41J512M8125IT_2x512M8_data = {
+	.rd_slave_ratio0	= 0x39,
+	.wr_dqs_slave_ratio0	= 0x38,
+	.fifo_we_slave_ratio0	= 0x98,
+	.wr_slave_ratio0	= 0x76,
+};
+
 /**
  * @brief The basic entry point for board initialization.
  *
@@ -95,6 +149,18 @@ static int pcm051_board_init(void)
 		am335x_sdram_init(0x18B, &pcm051_cmd,
 			&MT41J256M8HX15E_2x256M8_regs,
 			&MT41J256M8HX15E_2x256M8_data);
+	else if (IS_ENABLED(CONFIG_128MB_MT41J64M1615IT_1x128M16))
+		am335x_sdram_init(0x18B, &pcm051_cmd,
+			&MT41J64M1615IT_1x128M16_regs,
+			&MT41J64M1615IT_1x128M16_data);
+	else if (IS_ENABLED(CONFIG_256MB_MT41J128M16125IT_1x256M16))
+		am335x_sdram_init(0x18B, &pcm051_cmd,
+			&MT41J128M16125IT_1x256M16_regs,
+			&MT41J128M16125IT_1x256M16_data);
+	else if (IS_ENABLED(CONFIG_1024MB_MT41J512M8125IT_2x512M8))
+		am335x_sdram_init(0x18B, &pcm051_cmd,
+			&MT41J512M8125IT_2x512M8_regs,
+			&MT41J512M8125IT_2x512M8_data);
 
 	am33xx_uart0_soft_reset();
 	am33xx_enable_uart0_pin_mux();
@@ -110,5 +176,5 @@ void __naked __bare_init barebox_arm_reset_vector(uint32_t *data)
 
 	pcm051_board_init();
 
-	barebox_arm_entry(0x80000000, SZ_512M, 0);
+	barebox_arm_entry(0x80000000, SZ_128M, 0);
 }

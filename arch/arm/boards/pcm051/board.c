@@ -61,7 +61,15 @@ console_initcall(pcm051_console_init);
 
 static int pcm051_mem_init(void)
 {
-	omap_add_ram0(SZ_512M);
+	if (IS_ENABLED(CONFIG_512MB_MT41J256M8HX15E_2x256M8) ||
+		IS_ENABLED(CONFIG_512MB_MT41J128M16_1x512M16))
+		omap_add_ram0(SZ_512M);
+	else if (IS_ENABLED(CONFIG_128MB_MT41J64M1615IT_1x128M16))
+		omap_add_ram0(SZ_128M);
+	else if (IS_ENABLED(CONFIG_256MB_MT41J128M16125IT_1x256M16))
+		omap_add_ram0(SZ_256M);
+	else if (IS_ENABLED(CONFIG_1024MB_MT41J512M8125IT_2x512M8))
+		omap_add_ram0(SZ_1G);
 
 	return 0;
 }
