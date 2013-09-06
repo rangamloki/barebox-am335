@@ -100,9 +100,16 @@ static struct cpsw_platform_data cpsw_data = {
 	.num_slaves	= ARRAY_SIZE(cpsw_slaves),
 };
 
+static struct at24_platform_data eeprom_pdata = {
+	.byte_len	= 4096,
+	.page_size	= 32,
+	.flags		= AT24_FLAG_ADDR16,
+};
+
 static struct i2c_board_info i2c0_devices[] = {
 	{
 		I2C_BOARD_INFO("24c32", 0x52),
+		.platform_data	= &eeprom_pdata,
 	},
 };
 
