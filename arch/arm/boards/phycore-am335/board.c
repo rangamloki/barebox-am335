@@ -1,0 +1,148 @@
+/*
+ * SBC phyCORE AM335x - PHYTEC SBC phyCORE AM335x Board Initalization Code
+ *
+ * Copyright (C) 2013 Trilokesh Rangam, Phytec Embedded Pvt. Ltd.
+ *
+ * Based on arch/arm/boards/omap/board-beagle.c
+ *
+ * Based on arch/arm/boards/pcm051/board.c
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <bootsource.h>
+#include <common.h>
+#include <init.h>
+#include <io.h>
+#include <nand.h>
+#include <sizes.h>
+#include <ns16550.h>
+#include <asm/armlinux.h>
+#include <generated/mach-types.h>
+#include <mach/am33xx-devices.h>
+#include <mach/am33xx-generic.h>
+#include <mach/am33xx-mux.h>
+#include <mach/am33xx-silicon.h>
+#include <mach/generic.h>
+#include <mach/gpmc.h>
+#include <mach/gpmc_nand.h>
+#include <mach/bbu.h>
+
+#include "mux.h"
+
+/**
+ * @brief UART serial port initialization
+ * arch
+ *
+ * @return result of device registration
+ */
+static int phycore_am335_console_init(void)
+{
+	am33xx_enable_uart0_pin_mux();
+	/* Register the serial port */
+	am33xx_add_uart0();
+
+	return 0;
+}
+console_initcall(phycore_am335_console_init);
+
+static int phycore_am335_mem_init(void)
+{
+	if (IS_ENABLED(CONFIG_512MB_MT41J256M8HX15E_2x256M8) ||
+		IS_ENABLED(CONFIG_512MB_MT41J128M16_1x512M16))
+		omap_add_ram0(SZ_512M);
+	else if (IS_ENABLED(CONFIG_128MB_MT41J64M1615IT_1x128M16))
+		omap_add_ram0(SZ_128M);
+	else if (IS_ENABLED(CONFIG_256MB_MT41J128M16125IT_1x256M16))
+		omap_add_ram0(SZ_256M);
+	else if (IS_ENABLED(CONFIG_1024MB_MT41J512M8125IT_2x512M8))
+		omap_add_ram0(SZ_1G);
+
+	return 0;
+}
+mem_initcall(phycore_am335_mem_init);
+
+static struct gpmc_config phycore_am335_nand_cfg = {
+	.cfg = {
+		0x00000800,     /* CONF1 */
+		0x00030300,     /* CONF2 */
+		0x00030300,     /* CONF3 */
+		0x02000311,     /* CONF4 */
+		0x00030303,     /* CONF5 */
+		0x03000540,     /* CONF6 */
+	},
+	.base = 0x08000000,
+	.size = GPMC_SIZE_16M,
+};
+
+static struct gpmc_nand_platform_data nand_plat = {
+	.wait_mon_pin = 1,
+	.ecc_mode = OMAP_ECC_BCH8_CODE_HW,
+	.nand_cfg = &phycore_am335_nand_cfg,
+	.is_elm_used = 1,
+};
+
+static struct omap_barebox_part phycore_am335_barebox_part = {
+	.nand_offset = SZ_512K,
+	.nand_size = SZ_512K,
+	.nor_offset = SZ_128K,
+	.nor_size = SZ_512K,
+};
+
+static void phycore_am335_nand_init(void)
+{
+	phycore_am335_enable_nand_pin_mux();
+
+	gpmc_generic_init(0x12);
+
+	add_generic_device("elm", 0, NULL, 0x48080000, SZ_64K,
+					IORESOURCE_MEM, NULL);
+
+	omap_add_gpmc_nand_device(&nand_plat);
+}
+
+
+static int phycore_am335_devices_init(void)
+{
+	phycore_am335_enable_mmc0_pin_mux();
+	am33xx_add_mmc0(NULL);
+	phycore_am335_nand_init();
+
+	switch (bootsource_get()) {
+	case BOOTSOURCE_SPI:
+		devfs_add_partition("m25p0", 0x00000, SZ_128K,
+					DEVFS_PARTITION_FIXED, "xload");
+		devfs_add_partition("m25p0", SZ_128K, SZ_512K,
+					DEVFS_PARTITION_FIXED, "self0");
+		devfs_add_partition("m25p0", SZ_128K + SZ_512K, SZ_128K,
+					DEVFS_PARTITION_FIXED, "env0");
+		break;
+	default:
+		devfs_add_partition("nand0", 0x00000, SZ_128K,
+					DEVFS_PARTITION_FIXED, "xload_raw");
+		dev_add_bb_dev("xload_raw", "xload");
+		devfs_add_partition("nand0", SZ_512K, SZ_512K,
+					DEVFS_PARTITION_FIXED, "self_raw");
+		dev_add_bb_dev("self_raw", "self0");
+		devfs_add_partition("nand0", SZ_512K + SZ_512K, SZ_128K,
+					DEVFS_PARTITION_FIXED, "env_raw");
+		dev_add_bb_dev("env_raw", "env0");
+		break;
+}
+
+	omap_set_barebox_part(&phycore_am335_barebox_part);
+	armlinux_set_bootparams((void *)(AM33XX_DRAM_ADDR_SPACE_START + 0x100));
+	armlinux_set_architecture(MACH_TYPE_PHYCORE_AM335);
+
+	return 0;
+}
+device_initcall(phycore_am335_devices_init);

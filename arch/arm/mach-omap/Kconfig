@@ -130,6 +130,7 @@ config BOARDINFO
 	default "Phytec phyCARD-A-L1" if MACH_PCAAL1
 	default "Phytec phyCARD-A-XL2" if MACH_PCAAXL2
 	default "Phytec phyCORE-AM335x" if MACH_PCM051
+	default "Phytec phyBOARD phyCORE-AM335x" if MACH_PHYCORE_AM335
 
 choice
 	prompt "Select OMAP board"
@@ -198,6 +199,13 @@ config MACH_PCM051
 	help
 	  Say Y here if you are using Phytecs phyCORE pcm051 board
 
+config MACH_PHYCORE_AM335
+	bool "Phytec phyBOARD phyCORE AM335"
+	select HAVE_DEFAULT_ENVIRONMENT_NEW
+	depends on ARCH_AM33XX
+	help
+	  Say Y here if you are using Phytecs phyBOARD phyCORE-AM335 board
+
 endchoice
 
 if ARCH_OMAP
@@ -234,7 +242,7 @@ if MACH_PCM049
 	endchoice
 endif
 
-if MACH_PCM051
+if MACH_PCM051 || MACH_PHYCORE_AM335
 	choice
 	prompt "Select DDR3 RAM"
 

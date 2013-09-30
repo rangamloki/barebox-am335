@@ -143,6 +143,7 @@ board-$(CONFIG_MACH_PCM038)			+= pcm038
 board-$(CONFIG_MACH_PCM043)			+= pcm043
 board-$(CONFIG_MACH_PCM049)			+= pcm049
 board-$(CONFIG_MACH_PCM051)			+= pcm051
+board-$(CONFIG_MACH_PHYCORE_AM335)		+= phycore-am335
 board-$(CONFIG_MACH_PLATHOME_OPENBLOCKS_AX3)	+= plathome-openblocks-ax3
 board-$(CONFIG_MACH_PM9261)			+= pm9261
 board-$(CONFIG_MACH_PM9263)			+= pm9263
